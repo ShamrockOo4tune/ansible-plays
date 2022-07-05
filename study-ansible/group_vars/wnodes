@@ -1,0 +1,3 @@
+---
+remote_user      : ansible
+private_key_file : ./keys/ansible_rsa

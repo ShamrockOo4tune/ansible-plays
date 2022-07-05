@@ -1,0 +1,41 @@
+---
+- name: Configure web server with nginx
+  hosts: wnodes
+  become: yes
+  
+  vars_files:
+    - ./group_vars/become_password
+
+  vars:
+    ansible_become_pass: '{{ su_password }}'
+    source_file : ./files/nginx.conf
+    destin_file : /etc/nginx/sites-available/default
+ 
+  tasks:
+    - name   : install epel repo
+      yum    : name=epel-release
+    
+    - name   : install nginx
+      yum    : name=nginx update_cache=yes
+
+    - name   : copy nginx config file
+      copy: 
+        src  : '{{ source_file  }}'
+        dest : '{{ destin_file }}'
+
+    - name   : enable configuration
+      file: 
+        dest: /etc/nginx/sites-enabled/default
+        src: /etc/nginx/sites-available/default
+        state: link
+
+    - name: copy index.html
+      template:
+        src: templates/index.html.j2
+        dest: /usr/share/nginx/html/index.html
+        mode: 0644
+
+    - name: restart nginx
+      service: name=nginx state=restarted
+...
+
