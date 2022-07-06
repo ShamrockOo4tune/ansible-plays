@@ -8,10 +8,12 @@
     - ./group_vars/become_password
 
   vars:
-    ansible_become_pass: '{{ su_password }}'
-    source_file : ./templates/nginx.conf
-    conf_file : /etc/nginx/conf.d/http.conf
- 
+    ansible_become_pass  : '{{ su_password }}'
+    source_file          : ./templates/nginx-tls.conf.j2
+    conf_file            : /etc/nginx/conf.d/https.conf
+    tls_cert_file        : /etc/nginx/certs/https.cert
+    tls_key_file         : /etc/nginx/certs/https.key
+
   tasks:
     - name   : install epel repo
       yum    : name=epel-release
@@ -21,14 +23,29 @@
 
     - name   : create conf.d directory
       file   :
-        path : /etc/nginx/conf.d
+        path : /etc/nginx/conf.d      
         state: directory
-        mode : '0755'
-
+        mode : '0755' 
+     
     - name   : copy nginx config file
-      copy: 
+      template: 
         src  : '{{ source_file  }}'
         dest : '{{ conf_file }}'
+      notify : restart nginx
+
+    - name   : create dir for tls
+      file   : 
+        path : /etc/nginx/certs
+        state: directory
+        mode : '0755' 
+     
+    - name   : copy tls key
+      copy   : src=keys/https.key dest={{ tls_key_file }} owner=root mode=0600
+      notify : restart nginx
+    
+    - name   : copy tls certificate
+      copy   : src=keys/https.cert dest={{ tls_cert_file }} owner=root mode=0600
+      notify : restart nginx
 
     - name   : copy index.html
       template:
@@ -42,7 +59,7 @@
         state: started
         enabled: 1
 
-  handlers:
+  handlers   :
     - name   : restart nginx
       service: name=nginx state=restarted 
 ...
