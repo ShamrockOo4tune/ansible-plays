@@ -8,7 +8,6 @@
     - ./group_vars/become_password
 
   vars:
-    ansible_become_pass: '{{ su_password }}'
     source_file : ./templates/nginx.conf
     conf_file : /etc/nginx/conf.d/http.conf
  
