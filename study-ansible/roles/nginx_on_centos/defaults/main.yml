@@ -1,0 +1,8 @@
+---
+# defaults file for nginx_on_centos
+
+conf_file            : /etc/nginx/conf.d/https.conf
+tls_cert_file        : /etc/nginx/certs/https.cert
+tls_key_file         : /etc/nginx/certs/https.key
+...
+

@@ -1,0 +1,54 @@
+---
+# tasks file for nginx_on_centos
+
+- name     : install epel repo
+  yum      : name=epel-release
+    
+- name     : install nginx
+  yum      : name=nginx update_cache=yes
+
+- name     : create conf.d directory
+  file     :
+    path   : /etc/nginx/conf.d          
+    state  : directory
+    mode   : '0755' 
+     
+- name     : copy nginx config file
+  template : 
+    src    : nginx-tls.conf.j2 
+    dest   : '{{ conf_file }}'
+  notify   : restart nginx
+
+- name     : create dir for tls 
+  file     : 
+    path   : /etc/nginx/certs
+    state  : directory
+    mode   : '0755' 
+     
+- name     : copy tls key 
+  copy     :
+    src    : https.key
+    dest   : '{{ tls_key_file }}'
+    owner  : root
+    mode   : 0600
+  notify   : restart nginx
+    
+- name     : copy tls certificate
+  copy     : 
+    src    : https.cert
+    dest   : '{{ tls_cert_file }}'
+    owner  : root
+    mode   : 0600
+  notify   : restart nginx
+
+- name     : copy index.html
+  template :
+    src    : index.html.j2
+    dest   : /usr/share/nginx/html/index.html
+    mode   : 0644
+
+- name     : start nginx
+  service  :
+    name   : nginx
+    state  : started
+    enabled: 1
