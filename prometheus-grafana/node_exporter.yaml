@@ -1,0 +1,178 @@
+#!/usr/bin/ansible-playbook
+---
+- name                : Install, enable and  start node_explorer agent on CentOS 7 
+  hosts               : wk8s-node2 
+  become              : 1
+  
+  vars                :
+     exporter_v       : v1.3.1
+     exporter_arch_dir: node_exporter-{{ exporter_v  }}.linux-amd64
+
+     prometheus_v       : v2.37.0-rc.0
+     prometheus_arch_dir: node_exporter-{{ exporter_v  }}.linux-amd64
+
+
+ 
+  tasks               :
+    - name            : add user node_exporter
+      user            :
+        name          : node_exporter
+        shell         : /usr/bin/false
+        system        : 1
+        state         : present
+        create_home   : 0
+
+    - name            : install epel repo
+      yum             : name=epel-release
+
+    - name            : download node_exporter 
+      unarchive       : 
+        src           : https://github.com/prometheus/node_exporter/releases/download/{{ exporter_v }}/{{ exporter_arch_dir }}.tar.gz
+        dest          : ./
+        remote_src    : 1 
+
+    - name            : copy to /usr/local/bin
+      copy            :
+        remote_src    : 1
+        src           : ./{{ exporter_arch_dir }}
+        dest          : /usr/local/bin/node_exporter
+        owner         : node_exporter
+        group         : node_exporter
+
+    - name            : copy service file to systemd
+      copy            :
+        src           : ./node_exporter.service
+        dest          : /etc/systemd/system/node_exporter.service
+
+    - name            : enable and start node_exporter.service
+      systemd         :
+        daemon_reload : 1
+        name          : node_exporter
+        enabled       : 1
+        state         : started
+
+    - name            : cleanup
+      file            :
+        path          : ./{{ expoter_arch_dir }}
+        state         : absent
+
+#################################################################################
+
+- name                : Install, enable and start Prometheus on CentOS 7
+  hosts               : self
+  become              : 1
+
+  tasks               :
+    - name            : add user prometheus
+      user            :
+        name          : prometheus
+        shell         : /usr/bin/false
+        system        : 1
+        state         : present
+        create_home   : 0
+
+    - name            : create prometheus config directory
+      file            :
+        path          : '{{ item }}'
+        state         : directory
+        mode          : '0755'
+        owner         : prometheus
+        group         : prometheus
+      loop            :
+        - /etc/prometheus
+        - /var/lib/prometheus
+
+    - name            : cp config to prometeus config directory
+      copy            :
+        src           : ./prometheus.yaml
+        dest          : /etc/prometheus/prometheus.yaml
+        owner         : prometheus
+        group         : prometheus
+
+
+    - name            : download Prometheus
+      unarchieve      :  
+        src           : https://github.com/prometheus/prometheus/releases/download/{{ prometheus_v }}/{{ prometheus_arch_dir }}.tar.gz 
+        dest          : ./
+        remote_src    : 1
+
+    - name            : copy to /usr/local/bin
+      copy            :
+        remote_src    : 1
+        src           : ./{{ prometheus_arch_dir }}/{{ item }}
+        dest          : /usr/local/prometheus/{{ item }}
+        owner         : prometheus
+        group         : prometheus
+      loop            :
+        - prometheus
+        - promtool
+
+    - name            : copy to /etc/prometheus
+      copy            :
+        remote_src    : 1
+        src           : ./{{ prometheus_arch_dir }}/{{ item }}
+        dest          : /usr/local/prometheus/{{ item }}
+i       owner         : prometheus
+        group         : prometheus
+      loop            :
+        - consoles
+        - console/libraries
+
+    - name            : copy service file to systemd
+      copy            :
+        src           : ./prometheus.service
+        dest          : /etc/systemd/system/prometheus.service
+
+    - name            : start enable and start prometheus.service
+      systemd         :
+        daemon_reload : 1
+        name          : prometheus
+        enabled       : 1
+        state         : started
+
+    - name            : cleanup
+      file            :
+        path          : ./{{ prometheus_arch_dir }}
+        state         : absent
+ 
+#################################################################################
+
+- name                : Install, enable and start Grafana on CentOS 7
+  hosts               : self
+  become              : 1
+
+  tasks               :
+    - name            : download Grafana
+      unarchieve      :
+        src           :
+        dest          : ./
+        remote_src    : 1
+
+    - name            : copy to /usr/sbin
+      copy            :
+        remote_src    : 1
+        src           : 
+        dest          : 
+    
+    - name            : add user grafana
+      user            :
+        name          : grafana
+        shell         : /usr/bin/false
+        system        : 1
+        state         : present
+        create_home   : 0
+   
+#    - name            : copy service file to systemd
+#      copy            :
+#        src           : ./prometheus.service
+#        dest          : /etc/systemd/system/prometheus.service
+#
+#    - name            : start enable and start prometheus.service
+#      systemd         :
+#        daemon_reload : 1
+#        name          : prometheus
+#        enabled       : 1
+#        state         : started
+ 
+...
+
