@@ -1,0 +1,193 @@
+#!/usr/bin/ansible-playbook
+---
+- name                : Install, enable and start node_explorer agent on CentOS 7 
+  hosts               : wnodes 
+  become              : 1
+  
+  vars                :
+    exporter_v        : 1.3.1
+    exporter_arch_dir : node_exporter-{{ exporter_v  }}.linux-amd64
+ 
+  tasks               :
+    - name            : add user node_exporter
+      user            :
+        name          : node_exporter
+        shell         : /usr/bin/false
+        system        : 1
+        state         : present
+        create_home   : 0
+
+    - name            : install epel repo
+      yum             : name=epel-release
+
+    - name            : download node_exporter 
+      unarchive       : 
+        src           : https://github.com/prometheus/node_exporter/releases/download/v{{ exporter_v }}/{{ exporter_arch_dir }}.tar.gz
+        dest          : ./
+        remote_src    : 1 
+
+    - name            : copy to /usr/local/bin
+      copy            :
+        remote_src    : 1
+        src           : ./{{ exporter_arch_dir }}/node_exporter
+        dest          : /usr/local/bin/node_exporter
+        owner         : node_exporter
+        group         : node_exporter
+        mode          : '0744'
+
+    - name            : copy service file to systemd
+      copy            :
+        src           : ./node_exporter.service
+        dest          : /etc/systemd/system/node_exporter.service
+
+    - name            : enable and start node_exporter.service
+      systemd         :
+        daemon_reload : 1
+        name          : node_exporter
+        enabled       : 1
+        state         : started
+
+    - name            : open node_explorer port
+      firewalld       :
+        port          : 9100/tcp
+        permanent     : 1
+        state         : enabled
+        immediate     : 1
+
+    - name            : cleanup
+      file            :
+        path          : ./{{ exporter_arch_dir }}
+        state         : absent
+
+#################################################################################
+
+- name                : Install, enable and start Prometheus on CentOS 7
+  hosts               : prometheus
+  become              : 1
+
+  vars                 :
+    prometheus_v       : 2.37.0-rc.0
+    prometheus_arch_dir: prometheus-{{ prometheus_v  }}.linux-amd64
+
+  tasks               :
+    - name            : add user prometheus
+      user            :
+        name          : prometheus
+        shell         : /usr/bin/false
+        system        : 1
+        state         : present
+        create_home   : 0
+
+    - name            : create prometheus directories
+      file            :
+        path          : '{{ item }}'
+        state         : directory
+        mode          : '0755'
+        owner         : prometheus
+        group         : prometheus
+      loop            :
+        - /etc/prometheus
+        - /var/lib/prometheus
+
+    - name            : cp config to prometeus config directory
+      template        :
+        src           : ./prometheus.yml.j2
+        dest          : /etc/prometheus/prometheus.yml
+        owner         : prometheus
+        group         : prometheus
+
+    - name            : download Prometheus
+      unarchive       :  
+        src           : https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_v }}/{{ prometheus_arch_dir }}.tar.gz 
+        dest          : ./
+        remote_src    : 1
+
+    - name            : copy to /usr/local/bin
+      copy            :
+        remote_src    : 1
+        src           : ./{{ prometheus_arch_dir }}/{{ item }}
+        dest          : /usr/local/bin/{{ item }}
+        owner         : prometheus
+        group         : prometheus
+        mode          : '0744'
+      loop            :
+        - prometheus
+        - promtool
+
+    - name            : copy to /etc/prometheus
+      copy            :
+        remote_src    : 1
+        src           : ./{{ prometheus_arch_dir }}/{{ item }}
+        dest          : /etc/prometheus/{{ item }}
+        owner         : prometheus
+        group         : prometheus
+      loop            :
+        - consoles
+        - console_libraries
+
+    - name            : copy service file to systemd
+      copy            :
+        src           : ./prometheus.service
+        dest          : /etc/systemd/system/prometheus.service
+
+    - name            : enable and start prometheus.service
+      systemd         :
+        daemon_reload : 1
+        name          : prometheus
+        enabled       : 1
+        state         : started
+
+    - name            : open prometheus port
+      firewalld       :
+        port          : 9090/tcp
+        permanent     : 1
+        state         : enabled
+        immediate     : 1
+
+
+    - name            : cleanup
+      file            :
+        path          : ./{{ prometheus_arch_dir }}
+        state         : absent
+ 
+#################################################################################
+
+#- name                : Install, enable and start Grafana on CentOS 7
+#  hosts               : self
+#  become              : 1
+#
+#  tasks               :
+#    - name            : download Grafana
+#      unarchieve      :
+#        src           :
+#        dest          : ./
+#        remote_src    : 1
+#
+#    - name            : copy to /usr/sbin
+#      copy            :
+#        remote_src    : 1
+#        src           : 
+#        dest          : 
+#    
+#    - name            : add user grafana
+#      user            :
+#        name          : grafana
+#        shell         : /usr/bin/false
+#        system        : 1
+#        state         : present
+#        create_home   : 0
+#   
+#    - name            : copy service file to systemd
+#      copy            :
+#        src           : ./prometheus.service
+#        dest          : /etc/systemd/system/prometheus.service
+#
+#    - name            : start enable and start prometheus.service
+#      systemd         :
+#        daemon_reload : 1
+#        name          : prometheus
+#        enabled       : 1
+#        state         : started
+ 
+...
+

@@ -1,0 +1,9 @@
+[wnodes]
+wk8s-node1 ansible_host=10.4.22.68
+prometheus ansible_host=10.4.22.84
+wk8s-master ansible_host=10.4.22.67
+
+[home]
+lenovo ansible_host=192.168.1.126
+e6432  ansible_host=192.168.1.127
+
